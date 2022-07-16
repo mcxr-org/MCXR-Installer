@@ -14,6 +14,7 @@ import java.awt.*;
 import java.awt.event.ItemEvent;
 import java.io.*;
 import java.net.URL;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
@@ -235,16 +236,18 @@ public class Installer {
             String downloadIrisURL = "" + jarName;
             String downloadSodiumURL = "" + jarName;
 
-            File saveLocation = getStorageDirectory().resolve(jarName).toFile();
-
+            //File saveLocation = getStorageDirectory().resolve(jarName).toFile();
+            File saveFolder = installAsMod ? getInstallDir().resolve("mods").toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).toFile();
+            if (!saveFolder.exists() || !saveFolder.isDirectory()) {
+                saveFolder.mkdirs();
+            }
+            File saveLocation = installAsMod ? getInstallDir().resolve("mods").resolve(jarName).toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).resolve(jarName).toFile();
             final Downloader downloader = new Downloader(downloadMCXRURL, saveLocation);
             downloader.addPropertyChangeListener(event -> {
                 if ("progress".equals(event.getPropertyName())) {
                     progressBar.setValue((Integer) event.getNewValue());
                 } else if (event.getNewValue() == SwingWorker.StateValue.DONE) {
                     try {
-
-
                         downloader.get();
                     } catch (InterruptedException | ExecutionException e) {
                         System.out.println("Failed to download zip!");
@@ -267,6 +270,7 @@ public class Installer {
                     if (!installDir.exists() || !installDir.isDirectory()) installDir.mkdir();
 
                     File modsFolder = installAsMod ? getInstallDir().resolve("mods").toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).toFile();
+
                     File[] modsFolderContents = modsFolder.listFiles();
 
                     if (modsFolderContents != null) {
@@ -334,7 +338,7 @@ public class Installer {
 
                     if (!modsFolder.exists() || !modsFolder.isDirectory()) modsFolder.mkdir();
 
-                    boolean installSuccess = installFromZip(saveLocation);
+                    boolean installSuccess = true;//installFromZip(saveLocation);
                     if (installSuccess) {
                         button.setText("Installation succeeded!");
                         finishedSuccessfulInstall = true;
