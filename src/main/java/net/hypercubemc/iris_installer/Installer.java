@@ -25,7 +25,7 @@ public class Installer {
     InstallerMeta INSTALLER_META;
     List<InstallerMeta.Edition> EDITIONS;
     List<String> GAME_VERSIONS;
-    String BASE_URL = "https://raw.githubusercontent.com/IrisShaders/Iris-Installer-Files/master/";
+    String BASE_URL = "https://raw.githubusercontent.com/CADIndie/MCXR-Installer-Files/main/";
 
     String selectedEditionName;
     String selectedEditionDisplayName;
@@ -229,18 +229,22 @@ public class Installer {
             progressBar.setValue(0);
             setInteractionEnabled(false);
 
-            String zipName = selectedEditionName + "-" + selectedVersion + ".zip";
+            String jarName = selectedEditionName + "-" + selectedVersion + ".jar";
 
-            String downloadURL = "https://github.com/IrisShaders/Iris-Installer-Files/releases/latest/download/" + zipName;
+            String downloadMCXRURL = "https://github.com/CADIndie/MCXR-Installer-Files/releases/latest/download/" + jarName;
+            String downloadIrisURL = "" + jarName;
+            String downloadSodiumURL = "" + jarName;
 
-            File saveLocation = getStorageDirectory().resolve(zipName).toFile();
+            File saveLocation = getStorageDirectory().resolve(jarName).toFile();
 
-            final Downloader downloader = new Downloader(downloadURL, saveLocation);
+            final Downloader downloader = new Downloader(downloadMCXRURL, saveLocation);
             downloader.addPropertyChangeListener(event -> {
                 if ("progress".equals(event.getPropertyName())) {
                     progressBar.setValue((Integer) event.getNewValue());
                 } else if (event.getNewValue() == SwingWorker.StateValue.DONE) {
                     try {
+
+
                         downloader.get();
                     } catch (InterruptedException | ExecutionException e) {
                         System.out.println("Failed to download zip!");

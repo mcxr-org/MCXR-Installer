@@ -21,8 +21,8 @@ repositories {
 }
 
 dependencies {
-    implementation "org.json:json:20210307"
-    implementation "com.formdev:flatlaf:1.6.1"
+    implementation 'org.json:json:20220320'
+    implementation 'com.formdev:flatlaf:2.3'
 
     implementation "net.fabricmc:fabric-installer:0.9.0"
 }
