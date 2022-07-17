@@ -26,10 +26,13 @@ public class Installer {
     GithubMeta GITHUB_META;
     List<InstallerMeta.Edition> EDITIONS;
     List<String> GAME_VERSIONS;
+    List<String> COMPATIBLE_VERSIONS;
     String BASE_URL = "https://raw.githubusercontent.com/h4nkyn/MCXR-Installer-Files/main/";
     String[] selectedEditionNames;
     String[] selectedLinks;
+    String[] gameVersionList;
     String selectedEditionDisplayName;
+    List<String> selectedGameVersions;
     String selectedVersion;
     Path customInstallDir;
 
@@ -108,29 +111,48 @@ public class Installer {
         List<List<String>> editionNames = new ArrayList<>(); //set edition names to a list of lists of strings
         List<String> editionDisplayNames = new ArrayList<>();
         List<List<String>> editionLinks = new ArrayList<>();
+        List<List<String>> compatibleVersions = new ArrayList<>();
         for (InstallerMeta.Edition edition : EDITIONS) {
             editionNames.add(edition.names); // Add the names to the list ex. [ ["mcxr-core"] , ["mcxr-core","sodium"] ]
             editionDisplayNames.add(edition.displayName);
             editionLinks.add(edition.links);
+            compatibleVersions.add(edition.compatibleVersions);
         }
         //convert the lists of lists to an array of lists of strings named editionNamesList
         String[][] editionNamesList = new String[editionNames.size()][];
         String[][] editionLinksList = new String[editionLinks.size()][];
+        String[][] compatibleVersionsList = new String[compatibleVersions.size()][];
         for (int i = 0; i < editionNamesList.length; i++) {
             editionNamesList[i] = editionNames.get(i).toArray(new String[0]);
             editionLinksList[i] = editionLinks.get(i).toArray(new String[0]);
+        }
+        for (int i = 0; i < compatibleVersionsList.length; i++) {
+            compatibleVersionsList[i] = compatibleVersions.get(i).toArray(new String[0]);
         }
         selectedLinks = editionLinksList[0]; // this would be the first edition's links: ["https://somethinggithub.com/releases/download/whatever/"]
         selectedEditionNames = editionNamesList[0]; // this should be the first edition's names: ["mcxr-core"]
         String[] editionDisplayNameList = editionDisplayNames.toArray(new String[0]);
         selectedEditionDisplayName = editionDisplayNameList[0];
-
+        //create selectedGameVersions as an array of strings
+        selectedGameVersions = new ArrayList<>();
+        for (String version : compatibleVersionsList[0]) {
+            selectedGameVersions.add(version);
+        }
+        Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+        gameVersionList = selectedGameVersions.toArray(new String[0]);
+        //reverse the order of the list so that the latest version is on top and older versions downward
+        selectedVersion = gameVersionList[0];
+        versionDropdown = new JComboBox<>(gameVersionList);
         editionDropdown = new JComboBox<>(editionDisplayNameList);
         editionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 selectedEditionNames = editionNamesList[editionDropdown.getSelectedIndex()];
                 selectedLinks = editionLinksList[editionDropdown.getSelectedIndex()];
                 selectedEditionDisplayName = (String) e.getItem();
+                selectedGameVersions = compatibleVersions.get(editionDropdown.getSelectedIndex());
+                Collections.reverse(selectedGameVersions);
+                gameVersionList = selectedGameVersions.toArray(new String[0]);
+                versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
                 if (customInstallDir == null) {
                     installDirectoryPicker.setText(getDefaultInstallDir().toFile().getName());
                 }
@@ -147,12 +169,7 @@ public class Installer {
         JLabel versionDropdownLabel = new JLabel("Select Game Version:");
         versionDropdownLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        List<String> gameVersions = GAME_VERSIONS.subList(0, GAME_VERSIONS.size()); // Clone the list
-        Collections.reverse(gameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
-        String[] gameVersionList = gameVersions.toArray(new String[0]);
-        selectedVersion = gameVersionList[0];
 
-        versionDropdown = new JComboBox<>(gameVersionList);
         versionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 selectedVersion = (String) e.getItem();
@@ -317,7 +334,7 @@ public class Installer {
 
             String selectedEditionName = selectedEditionNames[i];
             //if mcxr in selectedEditionName
-            String releaseTag = selectedVersion.equals(gameVersions.get(0)) ? "latest" : selectedEditionName.contains("mcxr") ? "latest" : selectedVersion;
+            String releaseTag = selectedVersion.equals(selectedGameVersions.get(0)) ? "latest" : selectedEditionName.contains("mcxr") ? "latest" : selectedVersion;
             //this reads as:
                 // if the selected version is the latest version, use the latest tag,
                 // otherwise if the selected edition is mcxr, use the latest tag,
@@ -447,49 +464,49 @@ public class Installer {
         }
     }
 
-    public boolean installFromZip(File zip) {
-        try {
-            int BUFFER_SIZE = 2048; // Buffer Size
-
-            ZipInputStream zipIn = new ZipInputStream(new FileInputStream(zip));
-
-            ZipEntry entry = zipIn.getNextEntry();
-            // iterates over entries in the zip file
-            if (!installAsMod) {
-                getInstallDir().resolve("MCXR-reserved/").toFile().mkdir();
-            }
-            while (entry != null) {
-                String entryName = entry.getName();
-
-                if (!installAsMod && entryName.startsWith("mods/")) {
-                    entryName = entryName.replace("mods/", "MCXR-reserved/" + selectedVersion + "/");
-                }
-
-
-                File filePath = getInstallDir().resolve(entryName).toFile();
-                if (!entry.isDirectory()) {
-                    // if the entry is a file, extracts it
-                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
-                    byte[] bytesIn = new byte[BUFFER_SIZE];
-                    int read = 0;
-                    while ((read = zipIn.read(bytesIn)) != -1) {
-                        bos.write(bytesIn, 0, read);
-                    }
-                    bos.close();
-                } else {
-                    // if the entry is a directory, make the directory
-                    filePath.mkdir();
-                }
-                zipIn.closeEntry();
-                entry = zipIn.getNextEntry();
-            }
-            zipIn.close();
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+//    public boolean installFromZip(File zip) {
+//        try {
+//            int BUFFER_SIZE = 2048; // Buffer Size
+//
+//            ZipInputStream zipIn = new ZipInputStream(new FileInputStream(zip));
+//
+//            ZipEntry entry = zipIn.getNextEntry();
+//            // iterates over entries in the zip file
+//            if (!installAsMod) {
+//                getInstallDir().resolve("MCXR-reserved/").toFile().mkdir();
+//            }
+//            while (entry != null) {
+//                String entryName = entry.getName();
+//
+//                if (!installAsMod && entryName.startsWith("mods/")) {
+//                    entryName = entryName.replace("mods/", "MCXR-reserved/" + selectedVersion + "/");
+//                }
+//
+//
+//                File filePath = getInstallDir().resolve(entryName).toFile();
+//                if (!entry.isDirectory()) {
+//                    // if the entry is a file, extracts it
+//                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
+//                    byte[] bytesIn = new byte[BUFFER_SIZE];
+//                    int read = 0;
+//                    while ((read = zipIn.read(bytesIn)) != -1) {
+//                        bos.write(bytesIn, 0, read);
+//                    }
+//                    bos.close();
+//                } else {
+//                    // if the entry is a directory, make the directory
+//                    filePath.mkdir();
+//                }
+//                zipIn.closeEntry();
+//                entry = zipIn.getNextEntry();
+//            }
+//            zipIn.close();
+//            return true;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return false;
+//        }
+//    }
 
     public Path getStorageDirectory() {
         return getAppDataDirectory().resolve(getStorageDirectoryName());
