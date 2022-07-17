@@ -50,12 +50,16 @@ public class InstallerMeta {
     }
 
     public static class Edition {
-        String name;
+        List<String> names = new ArrayList<>();
+        List<String> links = new ArrayList<>();
         String displayName;
         List<String> compatibleVersions = new ArrayList<>();
 
         public Edition(JSONObject jsonObject) {
-            this.name = jsonObject.getString("name");
+            for (int i = 0; i < jsonObject.getJSONArray("names").toList().size(); i++){
+                names.add(jsonObject.getJSONArray("names").toList().get(i).toString());
+                links.add(jsonObject.getJSONArray("links").toList().get(i).toString());
+            }
             this.displayName = jsonObject.getString("display_name");
 
             for (int i = 0; i < jsonObject.getJSONArray("compatible_versions").toList().size(); i++){

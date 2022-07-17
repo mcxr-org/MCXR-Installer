@@ -24,17 +24,19 @@ public class VanillaLauncherIntegration {
             // The installation has been canceled via closing the window, most likely.
             return false;
         }
-        installVersion(vanillaGameDir, gameVersion, loaderName, loaderVersion, launcherType);
+        installVersion(instanceDir, gameVersion, loaderName, loaderVersion, launcherType);
         installProfile(vanillaGameDir, instanceDir, profileName, versionId, icon, launcherType);
         return true;
     }
 
     public static void installVersion(Path mcDir, String gameVersion, String loaderName, String loaderVersion, ProfileInstaller.LauncherType launcherType) throws IOException {
         System.out.println("Installing " + gameVersion + " with fabric " + loaderVersion + " to launcher " + launcherType);
+        System.out.println("Installing to " + mcDir);
         String versionId = String.format("%s-%s-%s", loaderName, loaderVersion, gameVersion);
         Path versionsDir = mcDir.resolve("versions");
         Path profileDir = versionsDir.resolve(versionId);
         Path profileJsonPath = profileDir.resolve(versionId + ".json");
+
         if (!Files.exists(profileDir)) {
             Files.createDirectories(profileDir);
         }
@@ -47,6 +49,7 @@ public class VanillaLauncherIntegration {
         if (loaderName.equals("mcxr-loader")) {
             editVersionJson(profileJson);
         }
+        System.out.println("Writing profile json to " + profileJsonPath);
         Utils.writeToFile(profileJsonPath, profileJson.toString());
     }
     

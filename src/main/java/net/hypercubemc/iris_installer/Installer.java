@@ -23,12 +23,16 @@ import java.util.zip.ZipInputStream;
 
 public class Installer {
     InstallerMeta INSTALLER_META;
+    GithubMeta GITHUB_META;
     List<InstallerMeta.Edition> EDITIONS;
     List<String> GAME_VERSIONS;
-    String BASE_URL = "https://raw.githubusercontent.com/CADIndie/MCXR-Installer-Files/main/";
-
-    String selectedEditionName;
+    List<String> COMPATIBLE_VERSIONS;
+    String BASE_URL = "https://raw.githubusercontent.com/h4nkyn/MCXR-Installer-Files/main/";
+    String[] selectedEditionNames;
+    String[] selectedLinks;
+    String[] gameVersionList;
     String selectedEditionDisplayName;
+    List<String> selectedGameVersions;
     String selectedVersion;
     Path customInstallDir;
 
@@ -102,22 +106,53 @@ public class Installer {
         JLabel editionDropdownLabel = new JLabel("Select Edition:");
         editionDropdownLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        List<String> editionNames = new ArrayList<>();
+
+
+        List<List<String>> editionNames = new ArrayList<>(); //set edition names to a list of lists of strings
         List<String> editionDisplayNames = new ArrayList<>();
+        List<List<String>> editionLinks = new ArrayList<>();
+        List<List<String>> compatibleVersions = new ArrayList<>();
         for (InstallerMeta.Edition edition : EDITIONS) {
-            editionNames.add(edition.name);
+            editionNames.add(edition.names); // Add the names to the list ex. [ ["mcxr-core"] , ["mcxr-core","sodium"] ]
             editionDisplayNames.add(edition.displayName);
+            editionLinks.add(edition.links);
+            compatibleVersions.add(edition.compatibleVersions);
         }
-        String[] editionNameList = editionNames.toArray(new String[0]);
-        selectedEditionName = editionNameList[0];
+        //convert the lists of lists to an array of lists of strings named editionNamesList
+        String[][] editionNamesList = new String[editionNames.size()][];
+        String[][] editionLinksList = new String[editionLinks.size()][];
+        String[][] compatibleVersionsList = new String[compatibleVersions.size()][];
+        for (int i = 0; i < editionNamesList.length; i++) {
+            editionNamesList[i] = editionNames.get(i).toArray(new String[0]);
+            editionLinksList[i] = editionLinks.get(i).toArray(new String[0]);
+        }
+        for (int i = 0; i < compatibleVersionsList.length; i++) {
+            compatibleVersionsList[i] = compatibleVersions.get(i).toArray(new String[0]);
+        }
+        selectedLinks = editionLinksList[0]; // this would be the first edition's links: ["https://somethinggithub.com/releases/download/whatever/"]
+        selectedEditionNames = editionNamesList[0]; // this should be the first edition's names: ["mcxr-core"]
         String[] editionDisplayNameList = editionDisplayNames.toArray(new String[0]);
         selectedEditionDisplayName = editionDisplayNameList[0];
-
+        //create selectedGameVersions as an array of strings
+        selectedGameVersions = new ArrayList<>();
+        for (String version : compatibleVersionsList[0]) {
+            selectedGameVersions.add(version);
+        }
+        Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+        gameVersionList = selectedGameVersions.toArray(new String[0]);
+        //reverse the order of the list so that the latest version is on top and older versions downward
+        selectedVersion = gameVersionList[0];
+        versionDropdown = new JComboBox<>(gameVersionList);
         editionDropdown = new JComboBox<>(editionDisplayNameList);
         editionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
-                selectedEditionName = editionNameList[editionDropdown.getSelectedIndex()];
+                selectedEditionNames = editionNamesList[editionDropdown.getSelectedIndex()];
+                selectedLinks = editionLinksList[editionDropdown.getSelectedIndex()];
                 selectedEditionDisplayName = (String) e.getItem();
+                selectedGameVersions = compatibleVersions.get(editionDropdown.getSelectedIndex());
+                Collections.reverse(selectedGameVersions);
+                gameVersionList = selectedGameVersions.toArray(new String[0]);
+                versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
                 if (customInstallDir == null) {
                     installDirectoryPicker.setText(getDefaultInstallDir().toFile().getName());
                 }
@@ -134,12 +169,7 @@ public class Installer {
         JLabel versionDropdownLabel = new JLabel("Select Game Version:");
         versionDropdownLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
-        List<String> gameVersions = GAME_VERSIONS.subList(0, GAME_VERSIONS.size()); // Clone the list
-        Collections.reverse(gameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
-        String[] gameVersionList = gameVersions.toArray(new String[0]);
-        selectedVersion = gameVersionList[0];
 
-        versionDropdown = new JComboBox<>(gameVersionList);
         versionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 selectedVersion = (String) e.getItem();
@@ -198,10 +228,10 @@ public class Installer {
 
         button = new JButton("Install");
         button.addActionListener(action -> {
-            if (!EDITIONS.stream().filter(edition -> edition.name.equals(selectedEditionName)).findFirst().get().compatibleVersions.contains(selectedVersion)) {
-                JOptionPane.showMessageDialog(frame, "The selected edition is not compatible with the chosen game version.", "Incompatible Edition", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+//            if (!EDITIONS.stream().filter(edition -> edition.names.get(0).equals(selectedEditionNames[0])).findFirst().get().compatibleVersions.contains(selectedVersion)) {
+//                JOptionPane.showMessageDialog(frame, "The selected edition is not compatible with the chosen game version.", "Incompatible Edition", JOptionPane.ERROR_MESSAGE);
+//                return;
+//            }
 
             String loaderName = installAsMod ? "fabric-loader" : "mcxr-fabric-loader";
 
@@ -209,6 +239,7 @@ public class Installer {
                 URL loaderVersionUrl = new URL("https://raw.githubusercontent.com/IrisShaders/Iris-Installer-Maven/master/latest-loader");
                 String loaderVersion = installAsMod ? Main.LOADER_META.getLatestVersion(false).getVersion() : Utils.readTextFile(loaderVersionUrl);
                 boolean success = VanillaLauncherIntegration.installToLauncher(getVanillaGameDir(), getInstallDir(), installAsMod ? "Fabric Loader " + selectedVersion : selectedEditionDisplayName + " for " + selectedVersion, selectedVersion, loaderName, loaderVersion, installAsMod ? VanillaLauncherIntegration.Icon.FABRIC: VanillaLauncherIntegration.Icon.MCXR);
+                System.out.println("Installer: Success: " + success);
                 if (!success) {
                     System.out.println("Failed to install to launcher, canceling!");
                     return;
@@ -226,28 +257,121 @@ public class Installer {
             }
 
             button.setText("Downloading...");
-            progressBar.setValue(0);
+            // do a for i loop to download all the files
+            boolean cancelled = false;
+            File modsFolder = installAsMod ? getInstallDir().resolve("mods").toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).toFile();
+            String folderName = installAsMod ? "Mods" : "MCXR";
+            if (!modsFolder.exists() || !modsFolder.isDirectory()) modsFolder.mkdirs();
+            File[] modsFolderContents = modsFolder.listFiles();
+            System.out.println("Mods folder length: "+ modsFolderContents.length);
+
+            if (modsFolderContents != null) { //if the mods folder exists, check if the mod is already installed
+                boolean isEmpty = modsFolderContents.length == 0; //if the mods folder is empty
+                if (modsFolder.exists() && modsFolder.isDirectory() && !isEmpty) { //if we want to install as a mod and the mods folder exists and is not empty
+                    System.out.println(folderName+" folder is not empty, as there's " + modsFolderContents.length + " file(s) in the mods folder.");
+                    int result = JOptionPane.showConfirmDialog(frame,"An existing " + folderName + " folder was found in the selected game directory. Do you want to update/install MCXR?", folderName+" Folder Detected",
+                            JOptionPane.YES_NO_OPTION,
+                            JOptionPane.QUESTION_MESSAGE);
+                    if (result != JOptionPane.YES_OPTION) {
+                        cancelled = true;
+                    }
+                }
+
+                if (!cancelled) { // if the user didn't cancel the install, we can start the download
+                    boolean shownOptifineDialog = false;
+                    boolean failedToRemoveOptifine = false;
+
+                    for (File mod : modsFolderContents) {
+                        if (mod.getName().toLowerCase().contains("optifine") || mod.getName().toLowerCase().contains("optifabric")) { // if the user has Optifine installed, we need to remove it first
+                            if (!shownOptifineDialog) {
+                                int result = JOptionPane.showOptionDialog(frame,"Optifine was found in your mods folder, but Optifine is incompatible with MCXR. Do you want to remove it, or cancel the installation?", "Optifine Detected",
+                                        JOptionPane.DEFAULT_OPTION,
+                                        JOptionPane.WARNING_MESSAGE, null, new String[]{"Yes", "Cancel"}, "Yes");
+
+                                shownOptifineDialog = true;
+                                if (result != JOptionPane.YES_OPTION) { // if the user cancelled, we can't continue
+                                    cancelled = true;
+                                    break;
+                                }
+                            }
+
+                            if (!mod.delete()) failedToRemoveOptifine = true;
+                        }
+                    }
+
+                    if (failedToRemoveOptifine) { // if we failed to remove Optifine, we can't continue
+                        System.out.println("Failed to delete optifine from mods folder");
+                        JOptionPane.showMessageDialog(frame, "Failed to remove optifine from your mods folder, please make sure your game is closed and try again!", "Failed to remove optifine", JOptionPane.ERROR_MESSAGE);
+                        cancelled = true;
+                    }
+                }
+
+                if (!cancelled) {
+                    boolean failedToRemoveMCXROrSodium = false;
+
+                    for (File mod : modsFolderContents) {
+                        if (mod.getName().toLowerCase().contains("MCXR") || mod.getName().toLowerCase().contains("sodium-fabric")) {
+                            if (!mod.delete()) failedToRemoveMCXROrSodium = true;
+                        }
+                    }
+
+                    if (failedToRemoveMCXROrSodium) {
+                        System.out.println("Failed to remove MCXR or Sodium from mods folder to update them!");
+                        JOptionPane.showMessageDialog(frame, "Failed to remove MCXR and sodium from your mods folder to update them, please make sure your game is closed and try again!", "Failed to prepare mods for update", JOptionPane.ERROR_MESSAGE);
+                        cancelled = true;
+                    }
+                }
+            }
+
+            if (cancelled) {
+                readyAll();
+                return;
+            }
+
+            try{
+            for (int i = 0; i < selectedEditionNames.length; i++) { //for each name in selectedEditionName (like mcxr, sodium, iris, etc)
+
+
+            String selectedEditionName = selectedEditionNames[i];
+            //if mcxr in selectedEditionName
+            String releaseTag = selectedVersion.equals(selectedGameVersions.get(0)) ? "latest" : selectedEditionName.contains("mcxr") ? "latest" : selectedVersion;
+            //this reads as:
+                // if the selected version is the latest version, use the latest tag,
+                // otherwise if the selected edition is mcxr, use the latest tag,
+                // otherwise use the selected version
+            String selectedLink = selectedLinks[i];
+            //progressBar.setValue(0);
             setInteractionEnabled(false);
-
-            String jarName = selectedEditionName + "-" + selectedVersion + ".jar";
-
-            String downloadMCXRURL = "https://github.com/CADIndie/MCXR-Installer-Files/releases/latest/download/" + jarName;
-            String downloadIrisURL = "" + jarName;
-            String downloadSodiumURL = "" + jarName;
-
-            File saveLocation = getStorageDirectory().resolve(jarName).toFile();
-
-            final Downloader downloader = new Downloader(downloadMCXRURL, saveLocation);
+            String jarName = selectedEditionName + selectedVersion + ".jar";
+            System.out.println("Downloading " + jarName);
+            String downloadLink = null;
+            try {
+                GITHUB_META = new GithubMeta(selectedLink);
+                GITHUB_META.load();
+               downloadLink = GITHUB_META.getReleaseLink(releaseTag);
+            } catch (IOException e) {
+                System.out.println("Failed to fetch GitHub metadata from the server!");
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "The installer was unable to fetch metadata from the server, please check your internet connection and try again later.", "Please check your internet connection!", JOptionPane.ERROR_MESSAGE);
+                return;
+            } catch (JSONException e) {
+                System.out.println("Failed to parse GitHub metadata from the server!");
+                e.printStackTrace();
+                JOptionPane.showMessageDialog(null, "GitHub metadata parsing failed, please contact the MCXR support team via Discord! \nError: " + e, "GitHub Metadata Parsing Failed!", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+            System.out.println("Downloading " + selectedEditionName + " with link " + downloadLink);
+            File saveLocation = installAsMod ? getInstallDir().resolve("mods").resolve(jarName).toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).resolve(jarName).toFile();
+            final int position = i;
+            final Downloader downloader = new Downloader(downloadLink, saveLocation);
             downloader.addPropertyChangeListener(event -> {
                 if ("progress".equals(event.getPropertyName())) {
                     progressBar.setValue((Integer) event.getNewValue());
                 } else if (event.getNewValue() == SwingWorker.StateValue.DONE) {
                     try {
-
-
                         downloader.get();
                     } catch (InterruptedException | ExecutionException e) {
-                        System.out.println("Failed to download zip!");
+                        System.out.println("Failed to download jar!");
                         e.getCause().printStackTrace();
 
                         String msg = String.format("An error occurred while attempting to download the required files, please check your internet connection and try again! \nError: %s",
@@ -258,98 +382,36 @@ public class Installer {
 
                         return;
                     }
-
+                    if (position == selectedEditionNames.length - 1) {
                     button.setText("Download completed!");
-
-                    boolean cancelled = false;
-
-                    File installDir = getInstallDir().toFile();
-                    if (!installDir.exists() || !installDir.isDirectory()) installDir.mkdir();
-
-                    File modsFolder = installAsMod ? getInstallDir().resolve("mods").toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).toFile();
-                    File[] modsFolderContents = modsFolder.listFiles();
-
-                    if (modsFolderContents != null) {
-                        boolean isEmpty = modsFolderContents.length == 0;
-
-                        if (installAsMod && modsFolder.exists() && modsFolder.isDirectory() && !isEmpty) {
-                            int result = JOptionPane.showConfirmDialog(frame,"An existing mods folder was found in the selected game directory. Do you want to update/install MCXR?", "Mods Folder Detected",
-                                    JOptionPane.YES_NO_OPTION,
-                                    JOptionPane.QUESTION_MESSAGE);
-                            if (result != JOptionPane.YES_OPTION) {
-                                cancelled = true;
-                            }
-                        }
-
-                        if (!cancelled) {
-                            boolean shownOptifineDialog = false;
-                            boolean failedToRemoveOptifine = false;
-
-                            for (File mod : modsFolderContents) {
-                                if (mod.getName().toLowerCase().contains("optifine") || mod.getName().toLowerCase().contains("optifabric")) {
-                                    if (!shownOptifineDialog) {
-                                        int result = JOptionPane.showOptionDialog(frame,"Optifine was found in your mods folder, but Optifine is incompatible with MCXR. Do you want to remove it, or cancel the installation?", "Optifine Detected",
-                                                JOptionPane.DEFAULT_OPTION,
-                                                JOptionPane.WARNING_MESSAGE, null, new String[]{"Yes", "Cancel"}, "Yes");
-
-                                        shownOptifineDialog = true;
-                                        if (result != JOptionPane.YES_OPTION) {
-                                            cancelled = true;
-                                            break;
-                                        }
-                                    }
-
-                                    if (!mod.delete()) failedToRemoveOptifine = true;
-                                }
-                            }
-
-                            if (failedToRemoveOptifine) {
-                                System.out.println("Failed to delete optifine from mods folder");
-                                JOptionPane.showMessageDialog(frame, "Failed to remove optifine from your mods folder, please make sure your game is closed and try again!", "Failed to remove optifine", JOptionPane.ERROR_MESSAGE);
-                                cancelled = true;
-                            }
-                        }
-
-                        if (!cancelled) {
-                            boolean failedToRemoveMCXROrSodium = false;
-
-                            for (File mod : modsFolderContents) {
-                                if (mod.getName().toLowerCase().contains("MCXR") || mod.getName().toLowerCase().contains("sodium-fabric")) {
-                                    if (!mod.delete()) failedToRemoveMCXROrSodium = true;
-                                }
-                            }
-
-                            if (failedToRemoveMCXROrSodium) {
-                                System.out.println("Failed to remove MCXR or Sodium from mods folder to update them!");
-                                JOptionPane.showMessageDialog(frame, "Failed to remove MCXR and sodium from your mods folder to update them, please make sure your game is closed and try again!", "Failed to prepare mods for update", JOptionPane.ERROR_MESSAGE);
-                                cancelled = true;
-                            }
-                        }
                     }
 
-                    if (cancelled) {
-                        readyAll();
-                        return;
-                    }
-
-                    if (!modsFolder.exists() || !modsFolder.isDirectory()) modsFolder.mkdir();
-
-                    boolean installSuccess = installFromZip(saveLocation);
-                    if (installSuccess) {
+                    boolean installSuccess = true;//installFromZip(saveLocation);
+                    if (installSuccess && position == selectedEditionNames.length - 1) {
                         button.setText("Installation succeeded!");
                         finishedSuccessfulInstall = true;
                         editionDropdown.setEnabled(true);
                         versionDropdown.setEnabled(true);
                         installDirectoryPicker.setEnabled(true);
                         installAsModCheckbox.setEnabled(true);
-                    } else {
-                        button.setText("Installation failed!");
-                        System.out.println("Failed to install to mods folder!");
-                        JOptionPane.showMessageDialog(frame, "Failed to install to mods folder, please make sure your game is closed and try again!", "Installation Failed!", JOptionPane.ERROR_MESSAGE);
                     }
+//                    else {
+//                        button.setText("Installation failed!");
+//                        System.out.println("Failed to install to mods folder!");
+//                        JOptionPane.showMessageDialog(frame, "Failed to install to mods folder, please make sure your game is closed and try again!", "Installation Failed!", JOptionPane.ERROR_MESSAGE);
+//                    }
                 }
             });
             downloader.execute();
+        }
+        }
+        catch (Exception e) {
+            button.setText("Installation failed!");
+            System.out.println("Failed to install to mods folder!");
+            JOptionPane.showMessageDialog(frame, "Failed to install to mods folder, please make sure your game is closed and try again!", "Installation Failed!", JOptionPane.ERROR_MESSAGE);
+        }
+
+
         });
 
         bottomPanel.add(progressBar);
@@ -402,49 +464,49 @@ public class Installer {
         }
     }
 
-    public boolean installFromZip(File zip) {
-        try {
-            int BUFFER_SIZE = 2048; // Buffer Size
-
-            ZipInputStream zipIn = new ZipInputStream(new FileInputStream(zip));
-
-            ZipEntry entry = zipIn.getNextEntry();
-            // iterates over entries in the zip file
-            if (!installAsMod) {
-                getInstallDir().resolve("MCXR-reserved/").toFile().mkdir();
-            }
-            while (entry != null) {
-                String entryName = entry.getName();
-
-                if (!installAsMod && entryName.startsWith("mods/")) {
-                    entryName = entryName.replace("mods/", "MCXR-reserved/" + selectedVersion + "/");
-                }
-
-
-                File filePath = getInstallDir().resolve(entryName).toFile();
-                if (!entry.isDirectory()) {
-                    // if the entry is a file, extracts it
-                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
-                    byte[] bytesIn = new byte[BUFFER_SIZE];
-                    int read = 0;
-                    while ((read = zipIn.read(bytesIn)) != -1) {
-                        bos.write(bytesIn, 0, read);
-                    }
-                    bos.close();
-                } else {
-                    // if the entry is a directory, make the directory
-                    filePath.mkdir();
-                }
-                zipIn.closeEntry();
-                entry = zipIn.getNextEntry();
-            }
-            zipIn.close();
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
+//    public boolean installFromZip(File zip) {
+//        try {
+//            int BUFFER_SIZE = 2048; // Buffer Size
+//
+//            ZipInputStream zipIn = new ZipInputStream(new FileInputStream(zip));
+//
+//            ZipEntry entry = zipIn.getNextEntry();
+//            // iterates over entries in the zip file
+//            if (!installAsMod) {
+//                getInstallDir().resolve("MCXR-reserved/").toFile().mkdir();
+//            }
+//            while (entry != null) {
+//                String entryName = entry.getName();
+//
+//                if (!installAsMod && entryName.startsWith("mods/")) {
+//                    entryName = entryName.replace("mods/", "MCXR-reserved/" + selectedVersion + "/");
+//                }
+//
+//
+//                File filePath = getInstallDir().resolve(entryName).toFile();
+//                if (!entry.isDirectory()) {
+//                    // if the entry is a file, extracts it
+//                    BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(filePath));
+//                    byte[] bytesIn = new byte[BUFFER_SIZE];
+//                    int read = 0;
+//                    while ((read = zipIn.read(bytesIn)) != -1) {
+//                        bos.write(bytesIn, 0, read);
+//                    }
+//                    bos.close();
+//                } else {
+//                    // if the entry is a directory, make the directory
+//                    filePath.mkdir();
+//                }
+//                zipIn.closeEntry();
+//                entry = zipIn.getNextEntry();
+//            }
+//            zipIn.close();
+//            return true;
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            return false;
+//        }
+//    }
 
     public Path getStorageDirectory() {
         return getAppDataDirectory().resolve(getStorageDirectoryName());
