@@ -228,10 +228,10 @@ public class Installer {
 
         button = new JButton("Install");
         button.addActionListener(action -> {
-            if (!EDITIONS.stream().filter(edition -> edition.names.get(0).equals(selectedEditionNames[0])).findFirst().get().compatibleVersions.contains(selectedVersion)) {
-                JOptionPane.showMessageDialog(frame, "The selected edition is not compatible with the chosen game version.", "Incompatible Edition", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
+//            if (!EDITIONS.stream().filter(edition -> edition.names.get(0).equals(selectedEditionNames[0])).findFirst().get().compatibleVersions.contains(selectedVersion)) {
+//                JOptionPane.showMessageDialog(frame, "The selected edition is not compatible with the chosen game version.", "Incompatible Edition", JOptionPane.ERROR_MESSAGE);
+//                return;
+//            }
 
             String loaderName = installAsMod ? "fabric-loader" : "mcxr-fabric-loader";
 
