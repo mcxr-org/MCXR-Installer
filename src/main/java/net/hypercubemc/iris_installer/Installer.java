@@ -149,9 +149,20 @@ public class Installer {
                 selectedEditionNames = editionNamesList[editionDropdown.getSelectedIndex()];
                 selectedLinks = editionLinksList[editionDropdown.getSelectedIndex()];
                 selectedEditionDisplayName = (String) e.getItem();
-                selectedGameVersions = compatibleVersions.get(editionDropdown.getSelectedIndex());
-                Collections.reverse(selectedGameVersions);
+                //check if order of selectedGameVersions is the same as the order of compatibleVersionsList[editionDropdown.getSelectedIndex()]
+                if (selectedGameVersions.size() != compatibleVersionsList[editionDropdown.getSelectedIndex()].length) {
+                    selectedGameVersions = new ArrayList<>();
+                    for (String version : compatibleVersionsList[editionDropdown.getSelectedIndex()]) {
+                        selectedGameVersions.add(version);
+                    }
+                    Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+                    gameVersionList = selectedGameVersions.toArray(new String[0]);
+                    versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
+                }
+                //Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+                //selectedGameVersions =
                 gameVersionList = selectedGameVersions.toArray(new String[0]);
+                System.out.println("Selected versions: " + selectedGameVersions);
                 versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
                 if (customInstallDir == null) {
                     installDirectoryPicker.setText(getDefaultInstallDir().toFile().getName());
@@ -173,7 +184,7 @@ public class Installer {
         versionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 selectedVersion = (String) e.getItem();
-
+                //System.out.println("Selected version: " + selectedVersion);
                 readyAll();
             }
         });
