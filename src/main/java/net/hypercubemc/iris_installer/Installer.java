@@ -233,7 +233,7 @@ public class Installer {
 //                return;
 //            }
 
-            String loaderName = installAsMod ? "fabric-loader" : "mcxr-fabric-loader";
+            String loaderName = installAsMod ? "fabric-loader" : "MCXR-fabric-loader";
 
             try {
                 URL loaderVersionUrl = new URL("https://raw.githubusercontent.com/IrisShaders/Iris-Installer-Maven/master/latest-loader");
