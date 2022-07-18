@@ -149,9 +149,20 @@ public class Installer {
                 selectedEditionNames = editionNamesList[editionDropdown.getSelectedIndex()];
                 selectedLinks = editionLinksList[editionDropdown.getSelectedIndex()];
                 selectedEditionDisplayName = (String) e.getItem();
-                selectedGameVersions = compatibleVersions.get(editionDropdown.getSelectedIndex());
-                Collections.reverse(selectedGameVersions);
+                //check if order of selectedGameVersions is the same as the order of compatibleVersionsList[editionDropdown.getSelectedIndex()]
+                if (selectedGameVersions.size() != compatibleVersionsList[editionDropdown.getSelectedIndex()].length) {
+                    selectedGameVersions = new ArrayList<>();
+                    for (String version : compatibleVersionsList[editionDropdown.getSelectedIndex()]) {
+                        selectedGameVersions.add(version);
+                    }
+                    Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+                    gameVersionList = selectedGameVersions.toArray(new String[0]);
+                    versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
+                }
+                //Collections.reverse(selectedGameVersions); // Reverse the order of the list so that the latest version is on top and older versions downward
+                //selectedGameVersions =
                 gameVersionList = selectedGameVersions.toArray(new String[0]);
+                System.out.println("Selected versions: " + selectedGameVersions);
                 versionDropdown.setModel(new DefaultComboBoxModel<>(gameVersionList));
                 if (customInstallDir == null) {
                     installDirectoryPicker.setText(getDefaultInstallDir().toFile().getName());
@@ -173,7 +184,7 @@ public class Installer {
         versionDropdown.addItemListener(e -> {
             if (e.getStateChange() == ItemEvent.SELECTED) {
                 selectedVersion = (String) e.getItem();
-
+                //System.out.println("Selected version: " + selectedVersion);
                 readyAll();
             }
         });
@@ -332,84 +343,99 @@ public class Installer {
             for (int i = 0; i < selectedEditionNames.length; i++) { //for each name in selectedEditionName (like mcxr, sodium, iris, etc)
 
 
-            String selectedEditionName = selectedEditionNames[i];
-            //if mcxr in selectedEditionName
-            String releaseTag = selectedVersion.equals(selectedGameVersions.get(0)) ? "latest" : selectedEditionName.contains("mcxr") ? "latest" : selectedVersion;
-            //this reads as:
+                String selectedEditionName = selectedEditionNames[i];
+                //if mcxr in selectedEditionName
+                String releaseTag = selectedVersion.equals(selectedGameVersions.get(0)) ? "latest" : selectedEditionName.contains("mcxr") ? "latest" : selectedVersion;
+                //this reads as:
                 // if the selected version is the latest version, use the latest tag,
                 // otherwise if the selected edition is mcxr, use the latest tag,
                 // otherwise use the selected version
-            String selectedLink = selectedLinks[i];
-            //progressBar.setValue(0);
-            setInteractionEnabled(false);
-            String jarName = selectedEditionName + selectedVersion + ".jar";
-            System.out.println("Downloading " + jarName);
-            String downloadLink = null;
-            try {
-                GITHUB_META = new GithubMeta(selectedLink);
-                GITHUB_META.load();
-               downloadLink = GITHUB_META.getReleaseLink(releaseTag);
-            } catch (IOException e) {
-                System.out.println("Failed to fetch GitHub metadata from the server!");
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(null, "The installer was unable to fetch metadata from the server, please check your internet connection and try again later.", "Please check your internet connection!", JOptionPane.ERROR_MESSAGE);
-                return;
-            } catch (JSONException e) {
-                System.out.println("Failed to parse GitHub metadata from the server!");
-                e.printStackTrace();
-                JOptionPane.showMessageDialog(null, "GitHub metadata parsing failed, please contact the MCXR support team via Discord! \nError: " + e, "GitHub Metadata Parsing Failed!", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-            System.out.println("Downloading " + selectedEditionName + " with link " + downloadLink);
-            File saveLocation = installAsMod ? getInstallDir().resolve("mods").resolve(jarName).toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).resolve(jarName).toFile();
-            final int position = i;
-            final Downloader downloader = new Downloader(downloadLink, saveLocation);
-            downloader.addPropertyChangeListener(event -> {
-                if ("progress".equals(event.getPropertyName())) {
-                    progressBar.setValue((Integer) event.getNewValue());
-                } else if (event.getNewValue() == SwingWorker.StateValue.DONE) {
-                    try {
-                        downloader.get();
-                    } catch (InterruptedException | ExecutionException e) {
-                        System.out.println("Failed to download jar!");
-                        e.getCause().printStackTrace();
-
-                        String msg = String.format("An error occurred while attempting to download the required files, please check your internet connection and try again! \nError: %s",
-                                e.getCause().toString());
-                        JOptionPane.showMessageDialog(frame,
-                                msg, "Download Failed!", JOptionPane.ERROR_MESSAGE, null);
-                        readyAll();
-
-                        return;
+                String selectedLink = selectedLinks[i];
+                //progressBar.setValue(0);
+                setInteractionEnabled(false);
+                List<String> downloadLink = null;
+                try {
+                    GITHUB_META = new GithubMeta(selectedLink);
+                    GITHUB_META.load();
+                    //if url is mcxr, get release links, otherwise get release link
+                    if (selectedLink.contains("mcxr")) {
+                        downloadLink = GITHUB_META.getReleaseLinks(releaseTag);
+                        //remove first element of downloadLink, which is the mcxr.jar link
+                        //downloadLink.remove(0);
+                    } else {
+                        downloadLink = GITHUB_META.getReleaseLink(releaseTag);
                     }
-                    if (position == selectedEditionNames.length - 1) {
-                    button.setText("Download completed!");
-                    }
+                    //downloadLink = GITHUB_META.getReleaseLinks(releaseTag);
+//                    System.out.println("Download link: " + downloadLink.get(0));
+                } catch (IOException e) {
+                    System.out.println("Failed to fetch GitHub metadata from the server!");
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "The installer was unable to fetch metadata from the server, please check your internet connection and try again later.", "Please check your internet connection!", JOptionPane.ERROR_MESSAGE);
+                    return;
+                } catch (JSONException e) {
+                    System.out.println("Failed to parse GitHub metadata from the server!");
+                    e.printStackTrace();
+                    JOptionPane.showMessageDialog(null, "GitHub metadata parsing failed, please contact the MCXR support team via Discord! \nError: " + e, "GitHub Metadata Parsing Failed!", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+                for (int j = 0; j < downloadLink.size(); j++) {
+                    String link = downloadLink.get(j);
+                    final int finalJ = j;
+                    //get the file name from the link
+                    String jarName = link.substring(link.lastIndexOf('/') + 1);
+                    System.out.println("Downloading " + selectedEditionName + " with link " + link);
+                    File saveLocation = installAsMod ? getInstallDir().resolve("mods").resolve(jarName).toFile() : getInstallDir().resolve("mcxr-reserved").resolve(selectedVersion).resolve(jarName).toFile();
+                    final int position = i;
+                    final Downloader downloader = new Downloader(link, saveLocation);
+                    List<String> finalDownloadLink = downloadLink;
+                    downloader.addPropertyChangeListener(event -> {
+                        if ("progress".equals(event.getPropertyName())) {
+                            progressBar.setValue((Integer) event.getNewValue());
+                        } else if (event.getNewValue() == SwingWorker.StateValue.DONE) {
+                            try {
+                                downloader.get();
+                            } catch (InterruptedException | ExecutionException e) {
+                                System.out.println("Failed to download jar!");
+                                e.getCause().printStackTrace();
 
-                    boolean installSuccess = true;//installFromZip(saveLocation);
-                    if (installSuccess && position == selectedEditionNames.length - 1) {
-                        button.setText("Installation succeeded!");
-                        finishedSuccessfulInstall = true;
-                        editionDropdown.setEnabled(true);
-                        versionDropdown.setEnabled(true);
-                        installDirectoryPicker.setEnabled(true);
-                        installAsModCheckbox.setEnabled(true);
-                    }
+                                String msg = String.format("An error occurred while attempting to download the required files, please check your internet connection and try again! \nError: %s",
+                                        e.getCause().toString());
+                                JOptionPane.showMessageDialog(frame,
+                                        msg, "Download Failed!", JOptionPane.ERROR_MESSAGE, null);
+                                readyAll();
+
+                                return;
+                            }
+                            if (position == selectedEditionNames.length - 1 && finalJ == finalDownloadLink.size() - 1) {
+                                button.setText("Download completed!");
+                            }
+
+                            boolean installSuccess = true;//installFromZip(saveLocation);
+                            if (installSuccess && position == selectedEditionNames.length - 1 && finalJ == finalDownloadLink.size() - 1) {
+                                button.setText("Installation succeeded!");
+                                finishedSuccessfulInstall = true;
+                                editionDropdown.setEnabled(true);
+                                versionDropdown.setEnabled(true);
+                                installDirectoryPicker.setEnabled(true);
+                                installAsModCheckbox.setEnabled(true);
+                            }
 //                    else {
 //                        button.setText("Installation failed!");
 //                        System.out.println("Failed to install to mods folder!");
 //                        JOptionPane.showMessageDialog(frame, "Failed to install to mods folder, please make sure your game is closed and try again!", "Installation Failed!", JOptionPane.ERROR_MESSAGE);
 //                    }
+                        }
+                    });
+                    downloader.execute();
                 }
-            });
-            downloader.execute();
-        }
+            }
         }
         catch (Exception e) {
             button.setText("Installation failed!");
             System.out.println("Failed to install to mods folder!");
             JOptionPane.showMessageDialog(frame, "Failed to install to mods folder, please make sure your game is closed and try again!", "Installation Failed!", JOptionPane.ERROR_MESSAGE);
-        }
+            readyAll();
+            }
 
 
         });

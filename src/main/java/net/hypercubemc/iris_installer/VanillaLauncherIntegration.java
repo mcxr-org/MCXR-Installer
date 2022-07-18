@@ -58,6 +58,7 @@ public class VanillaLauncherIntegration {
         Map<String, Json> json = profileJson.asJsonMap();
         // Replace fabric-loader-etc with iris-fabric-loader-etc
         json.compute("id", (ignored, existing) -> factory.string("MCXR-" + existing.asString()));
+
         // Replace loader maven url and name
         for (Json entry : json.get("libraries").asJsonList()) {
             final String id = "net.fabricmc:fabric-loader:";
