@@ -29,7 +29,7 @@ public class GithubMeta {
         }
     }
 
-    public String getReleaseLink(String gameVersion) throws IOException {
+    public List<String> getReleaseLink(String gameVersion) throws IOException {
 
         //set sorted to the releases list
         String shortenedGameVersion = gameVersion.substring(0, gameVersion.length() - 1) + "x";
@@ -46,7 +46,33 @@ public class GithubMeta {
             sorted.add("latest");
         }
         System.out.println("Sorted for game version " + gameVersion + ": " + sorted);
-        return getUrl(sorted);
+        //return geturl as a single entry array
+        List<String> geturl = new ArrayList<>();
+        geturl.add(getUrl(sorted));
+        return geturl;
+    }
+
+    public List<String> getReleaseLinks(String gameVersion) throws IOException {
+
+        //set sorted to the releases list
+        String shortenedGameVersion = gameVersion.substring(0, gameVersion.length() - 1) + "x";
+        List<String> sorted = new ArrayList<>();
+        //only add the releases that match the game version
+        if (!gameVersion.equals("latest")) {
+            for (int i = 0; i < releases.size(); i++) {
+                if (releases.get(i).contains(gameVersion) || releases.get(i).contains(shortenedGameVersion)) {
+                    sorted.add(releases.get(i));
+                    System.out.println("Added " + releases.get(i));
+                }
+            }
+        }
+        else {
+            sorted.add("latest");
+        }
+        System.out.println("Sorted for game version " + gameVersion + ": " + sorted);
+        List<String> geturls = getUrls(sorted);
+//        System.out.println("Geturls for game version " + gameVersion + ": " + geturls);
+        return geturls;
     }
 
 
@@ -59,6 +85,7 @@ public class GithubMeta {
                 json = readJsonObjectFromUrl(this.metaUrl + "releases/tags/" + versionTag.get(i));
             } else {
                 json = readJsonObjectFromUrl(this.metaUrl + "releases/latest");
+                System.out.println(this.metaUrl + "releases/latest");
             }
             //get_download_url from assets
             JSONArray assets = json.getJSONArray("assets");
@@ -81,6 +108,45 @@ public class GithubMeta {
         }
         return null;
     }
+
+
+    public List<String> getUrls(List versionTag) throws IOException, JSONException {
+        JSONObject json;
+        //try the first tag and if it fails, try the second tag
+        for (int i = 0; i < versionTag.size(); i++) {
+            try {
+                if (!versionTag.get(i).equals("latest")) {
+                    json = readJsonObjectFromUrl(this.metaUrl + "releases/tags/" + versionTag.get(i));
+                } else {
+                    json = readJsonObjectFromUrl(this.metaUrl + "releases/latest");
+                }
+                //get_download_url from assets
+                JSONArray assets = json.getJSONArray("assets");
+                //find the first browser download link that ends with .jar
+                List<String> urls = new ArrayList<>();
+                for (int z = 0; z < assets.length(); z++) {
+                    JSONObject object = assets.getJSONObject(z);
+                    if (object.getString("name").endsWith(".jar")) {
+                        //add the url to the array
+                        urls.add(object.getString("browser_download_url"));
+//                        System.out.println("Added " + object.getString("browser_download_url"));
+                    }
+                }
+                return urls;
+
+            } catch (FileNotFoundException e) {
+                System.out.println("Failed to get url for " + versionTag.get(i));
+                System.out.println("Trying next tag");
+            }
+            catch (IOException e) {
+                System.out.println("GiHub API limit reached");
+                break;
+            }
+        }
+        return null;
+    }
+
+
 
     public static String readAll(Reader reader) throws IOException {
         StringBuilder stringBuilder = new StringBuilder();
