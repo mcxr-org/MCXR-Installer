@@ -46,7 +46,7 @@ public class VanillaLauncherIntegration {
         Files.createFile(dummyJar);
         URL profileUrl = new URL(Reference.getMetaServerEndpoint(String.format("v2/versions/loader/%s/%s/profile/json", gameVersion, loaderVersion)));
         Json profileJson = Json.read(profileUrl);
-        if (loaderName.equals("mcxr-loader")) {
+        if (loaderName.equals("mcxr-fabric-loader")) {
             editVersionJson(profileJson);
         }
         System.out.println("Writing profile json to " + profileJsonPath);
@@ -57,7 +57,8 @@ public class VanillaLauncherIntegration {
         Json.Factory factory = Json.factory();
         Map<String, Json> json = profileJson.asJsonMap();
         // Replace fabric-loader-etc with iris-fabric-loader-etc
-        json.compute("id", (ignored, existing) -> factory.string("mcxr-" + existing.asString()));
+        json.compute("id", (ignored, existing) -> factory.string("mcxr-fabric-" + existing.asString()));
+        System.out.println("Edited profile json to " + profileJson);
         // Replace loader maven url and name
         for (Json entry : json.get("libraries").asJsonList()) {
             final String id = "net.fabricmc:fabric-loader:";
