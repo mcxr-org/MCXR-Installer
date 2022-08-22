@@ -27,7 +27,7 @@ public class Installer {
     List<InstallerMeta.Edition> EDITIONS;
     List<String> GAME_VERSIONS;
     List<String> COMPATIBLE_VERSIONS;
-    String BASE_URL = "https://raw.githubusercontent.com/CADIndie/MCXR-Installer-Files/main/";
+    String BASE_URL = "https://raw.githubusercontent.com/mcxr-org/MCXR-Installer-Files/main/";
     String[] selectedEditionNames;
     String[] selectedLinks;
     String[] gameVersionList;
